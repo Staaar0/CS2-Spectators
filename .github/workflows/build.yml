@@ -1,0 +1,41 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - run: dotnet build CS2-Spectators/CS2-Spectators.csproj -c Release
+
+      - name: Package
+        run: |
+          mkdir -p release/addons/counterstrikesharp/plugins/CS2-Spectators
+          cp CS2-Spectators/bin/Release/net10.0/CS2-Spectators.* release/addons/counterstrikesharp/plugins/CS2-Spectators/
+          cd release
+          zip -r ../CS2-Spectators.zip addons
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" \
+            CS2-Spectators.zip \
+            --target "${GITHUB_SHA}" \
+            --title "CS2-Spectators build ${GITHUB_RUN_NUMBER}" \
+            --notes "Automated build for ${GITHUB_SHA}." \
+            --latest
